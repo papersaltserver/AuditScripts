@@ -133,6 +133,8 @@ foreach($physicaldisk in $physicaldisks){
 	$html += "<br />"
 	$html += "Serial: " + $physicaldisk.SerialNumber
 	$html += "<br />"
+	$htm  += "Signature: " + $physicaldisk.Signature
+	$html += "<br />"
 	$html += "Status: " + $physicaldisk.Status
 	$html += "<br />"
 	$html += "Size in GB: " + [Math]::Round($physicaldisk.Size/1GB)
@@ -155,15 +157,11 @@ foreach($physicaldisk in $physicaldisks){
 		$html += '</td>'
 		$html += '<td>'
 		if($msftexception -eq ""){
-			$msftphysicaldisk = Get-WmiObject -ComputerName $Server -Query "Select * from MSFT_Disk where SerialNumber='$($physicaldisk.SerialNumber)'" -Namespace root\microsoft\windows\storage
+			$msftphysicaldisk = Get-WmiObject -ComputerName $Server -Query "Select * from MSFT_Disk where Signature='$($physicaldisk.Signature)'" -Namespace root\microsoft\windows\storage
 			$msftpartition = Get-WmiObject -ComputerName $Server -Query "Select * from MSFT_Partition Where DiskNumber='$($msftphysicaldisk.Number)' AND Offset='$($partition.StartingOffset)'" -Namespace root\microsoft\windows\storage
             $msftvol = $null
-			foreach($msftP2V in $msftP2Vs){
-				if($msftP2V.Partition -eq '\\.\ROOT\microsoft\windows\storage:'+$msftpartition.__RELPATH){
-					$msftvol=$msftP2V.Volume.Substring(57,53)
-				}
-			}
-			$volume = Get-WmiObject -ComputerName $Server -Query "Select * from win32_volume where DeviceId='$($msftvol)'"
+			$msftvol = Get-WmiObject -ComputerName $Server -Query "ASSOCIATORS OF {$msftpartition} WHERE ResultClass=MSFT_Volume AssocClass=MSFT_PartitionToVolume" -Namespace root\microsoft\windows\storage
+			$volume = Get-WmiObject -ComputerName $Server -Query "Select * from win32_volume where DeviceId='$([regex]::replace($msftvol.Path,"\\","\\"))'"
             if($volume -ne $null){
 			    $html += 'Name: '+$volume.Name
 			    $html += "<br />"
